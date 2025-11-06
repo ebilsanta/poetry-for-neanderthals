@@ -9,7 +9,7 @@ export const AssignPlayersRequest = z.object({
       z.object({
         playerId: z.string().min(1),
         teamId: TeamId,
-      })
+      }),
     )
     .min(1, "Provide at least one move."),
 });
@@ -25,7 +25,7 @@ export const AssignPlayersResponse = z
             z.object({
               playerId: z.string(),
               teamId: TeamId,
-            })
+            }),
           )
           .optional(),
       })

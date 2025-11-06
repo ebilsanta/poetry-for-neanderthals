@@ -43,7 +43,7 @@ export const NextCardResponse = z
           z.object({
             cardId: z.string(),
             outcome: z.enum(["ONE", "THREE", "PENALTY"]),
-          })
+          }),
         ),
         finalScores: z.record(TeamId, z.number()),
       })

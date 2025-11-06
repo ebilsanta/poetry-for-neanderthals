@@ -37,6 +37,12 @@ devDependencies:
   eslint-config-next:
     specifier: 16.0.1
     version: 16.0.1(@typescript-eslint/parser@8.46.3)(eslint@9.39.1)(typescript@5.9.3)
+  eslint-config-prettier:
+    specifier: ^10.1.8
+    version: 10.1.8(eslint@9.39.1)
+  prettier:
+    specifier: ^3.6.2
+    version: 3.6.2
   tailwindcss:
     specifier: ^4
     version: 4.1.17
@@ -1728,6 +1734,15 @@ packages:
       - supports-color
     dev: true
 
+  /eslint-config-prettier@10.1.8(eslint@9.39.1):
+    resolution: {integrity: sha512-82GZUjRS0p/jganf6q1rEO25VSoHH0hKPCTrgillPjdI/3bgBhAE1QzHrHTizjpRvy6pGAvKjDJtk2pF9NDq8w==}
+    hasBin: true
+    peerDependencies:
+      eslint: '>=7.0.0'
+    dependencies:
+      eslint: 9.39.1
+    dev: true
+
   /eslint-import-resolver-node@0.3.9:
     resolution: {integrity: sha512-WFj2isz22JahUv+B788TlO3N6zL3nNJGU8CcZbPZvVEkBPaJdCV4vy5wyghty5ROFbCRnm132v8BScu5/1BQ8g==}
     dependencies:
@@ -2982,6 +2997,12 @@ packages:
   /prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+    dev: true
+
+  /prettier@3.6.2:
+    resolution: {integrity: sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==}
+    engines: {node: '>=14'}
+    hasBin: true
     dev: true
 
   /prop-types@15.8.1:

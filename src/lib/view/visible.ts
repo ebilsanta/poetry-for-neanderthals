@@ -3,7 +3,7 @@ import { TeamId, RoomState } from "@lib/common/enums";
 
 export const VisibleCard = z.object({
   id: z.string(),
-  onePoint: z.string().optional(),   // present only for poet/opponents
+  onePoint: z.string().optional(), // present only for poet/opponents
   threePoint: z.string().optional(), // present only for poet/opponents
 });
 export type VisibleCard = z.infer<typeof VisibleCard>;
@@ -34,28 +34,42 @@ export const VisibleRoomSnapshot = z.object({
     winningScore: z.number().optional(),
     allowPass: z.boolean().optional(),
   }),
-  players: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    teamId: TeamId,
-    isCreator: z.boolean(),
-    connected: z.boolean(),
-  })),
+  players: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      teamId: TeamId,
+      isCreator: z.boolean(),
+      connected: z.boolean(),
+    }),
+  ),
   teams: z.object({
-    A: z.object({ id: TeamId, players: z.array(z.string()), score: z.number() }),
-    B: z.object({ id: TeamId, players: z.array(z.string()), score: z.number() }),
+    A: z.object({
+      id: TeamId,
+      players: z.array(z.string()),
+      score: z.number(),
+    }),
+    B: z.object({
+      id: TeamId,
+      players: z.array(z.string()),
+      score: z.number(),
+    }),
   }),
   currentRound: z.number().optional(),
-  round: z.object({
-    number: z.number(),
-    poetOrder: z.array(z.string()),
-    activeTurn: VisibleTurn.optional(),
-    completedTurns: z.number(),
-  }).optional(),
-  lastTurnSummary: z.object({
-    turnId: z.string(),
-    teamDelta: z.record(TeamId, z.number()),
-    finalScores: z.record(TeamId, z.number()),
-  }).optional(),
+  round: z
+    .object({
+      number: z.number(),
+      poetOrder: z.array(z.string()),
+      activeTurn: VisibleTurn.optional(),
+      completedTurns: z.number(),
+    })
+    .optional(),
+  lastTurnSummary: z
+    .object({
+      turnId: z.string(),
+      teamDelta: z.record(TeamId, z.number()),
+      finalScores: z.record(TeamId, z.number()),
+    })
+    .optional(),
 });
 export type VisibleRoomSnapshot = z.infer<typeof VisibleRoomSnapshot>;

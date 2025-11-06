@@ -22,7 +22,6 @@ export const VisibleTurn = z.object({
     THREE: z.number(),
     PENALTY: z.number(),
   }),
-  endedReason: z.enum(["TIMER", "MANUAL"]).optional(),
 });
 export type VisibleTurn = z.infer<typeof VisibleTurn>;
 

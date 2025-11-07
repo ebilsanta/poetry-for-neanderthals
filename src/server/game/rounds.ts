@@ -18,6 +18,22 @@ export function buildPoetOrder(room: Room): string[] {
   return order;
 }
 
+/** Round is complete when the number of completed turns equals the poet order length. */
+export function isRoundComplete(room: Room): boolean {
+  const n = room.currentRound;
+  if (!n) return false;
+  const r = room.rounds[n];
+  if (!r) return false;
+  return r.completedTurns.length >= r.poetOrder.length && !r.activeTurnId;
+}
+
+/** Rotate the poet order so the next round starts with a different poet. */
+export function rotatePoetOrder(prevOrder: string[]): string[] {
+  if (prevOrder.length === 0) return prevOrder;
+  const [head, ...rest] = prevOrder;
+  return [...rest, head];
+}
+
 /**
  * Start the FIRST round.
  * Preconditions:
@@ -66,6 +82,71 @@ export function startFirstRound(room: Room) {
       number,
       poetOrder,
       activeTurnId: room.rounds[number].activeTurnId,
+    },
+  };
+}
+
+/**
+ * Start the NEXT round or end the game.
+ * Preconditions:
+ *  - room.state === "BETWEEN_ROUNDS"
+ *  - currentRound exists and is complete
+ * Behavior:
+ *  - Create next round (number+1) with rotated poetOrder, set state = "IN_ROUND".
+ *  - This function does **not** end the game; reaching winningScore does not affect round advancement.
+ */
+export function startNextRound(room: Room) {
+  if (room.state !== "BETWEEN_ROUNDS") {
+    return {
+      ok: false as const,
+      status: 400,
+      error: {
+        code: "BAD_STATE" as const,
+        message: "Can only advance between rounds",
+      },
+    };
+  }
+  if (!room.currentRound || !room.rounds[room.currentRound]) {
+    return {
+      ok: false as const,
+      status: 400,
+      error: {
+        code: "BAD_STATE" as const,
+        message: "No current round to advance from",
+      },
+    };
+  }
+  if (!isRoundComplete(room)) {
+    return {
+      ok: false as const,
+      status: 400,
+      error: {
+        code: "BAD_STATE" as const,
+        message: "Current round is not complete",
+      },
+    };
+  }
+
+  const prevNo = room.currentRound;
+  const prevOrder = room.rounds[prevNo].poetOrder;
+  const nextNo = prevNo + 1;
+  const poetOrder = rotatePoetOrder(prevOrder);
+
+  room.rounds[nextNo] = {
+    number: nextNo,
+    poetOrder,
+    completedTurns: [],
+    activeTurnId: undefined,
+  };
+  room.currentRound = nextNo;
+  room.state = "IN_ROUND";
+
+  return {
+    ok: true as const,
+    round: {
+      number: nextNo,
+      poetOrder,
+      activeTurnId: room.rounds[nextNo].activeTurnId,
     },
   };
 }

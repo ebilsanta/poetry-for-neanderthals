@@ -1,4 +1,4 @@
-import type { TeamId } from "@lib/common/enums";
+import type { TeamId, RoomState, Outcome } from "@lib/common/enums";
 
 export type RoomCode = string; // 3 chars
 export type ISOEpochMs = number;
@@ -26,8 +26,6 @@ export interface Card {
   threePoint: string;
   used: boolean;
 }
-
-export type Outcome = "ONE" | "THREE" | "PENALTY";
 
 export interface TurnOutcome {
   cardId: string;
@@ -59,9 +57,8 @@ export interface GameSettings {
   turnSeconds: number;
   winningScore?: number;
   allowPass?: boolean;
+  teamNames?: Record<TeamId, string>; // { A : "MAD", B : "GLAD"}
 }
-
-export type RoomState = "LOBBY" | "IN_ROUND" | "BETWEEN_ROUNDS" | "ENDED";
 
 export interface Room {
   code: RoomCode;

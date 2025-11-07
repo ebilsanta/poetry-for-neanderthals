@@ -22,6 +22,7 @@ export const VisibleTurn = z.object({
     THREE: z.number(),
     PENALTY: z.number(),
   }),
+  endedReason: z.enum(["TIMER", "MANUAL"]).optional(),
 });
 export type VisibleTurn = z.infer<typeof VisibleTurn>;
 
@@ -32,6 +33,12 @@ export const VisibleRoomSnapshot = z.object({
     turnSeconds: z.number(),
     winningScore: z.number().optional(),
     allowPass: z.boolean().optional(),
+    teamNames: z
+      .object({
+        A: z.string(),
+        B: z.string(),
+      })
+      .optional(),
   }),
   players: z.array(
     z.object({
@@ -54,6 +61,12 @@ export const VisibleRoomSnapshot = z.object({
       score: z.number(),
     }),
   }),
+  teamNames: z
+    .object({
+      A: z.string(), // e.g., "MAD"
+      B: z.string(), // e.g., "GLAD"
+    })
+    .optional(),
   currentRound: z.number().optional(),
   round: z
     .object({

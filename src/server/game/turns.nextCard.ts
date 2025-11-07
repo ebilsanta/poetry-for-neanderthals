@@ -204,3 +204,43 @@ export function scoreCurrentAndMaybeNextCard(
     remainingMs,
   };
 }
+
+export function forceEndTurn(room: Room) {
+  if (room.state !== "IN_ROUND" || !room.currentRound) return undefined;
+  const round = room.rounds[room.currentRound];
+  if (!round || !round.activeTurnId) return undefined;
+  const turn = room.turns[round.activeTurnId];
+  if (!turn) return undefined;
+
+  const activeCardId = turn.activeCardId;
+  if (activeCardId) {
+    room.discardPile.push(activeCardId);
+    turn.activeCardId = undefined;
+  }
+
+  turn.endedReason = "TIMER";
+  round.completedTurns.push(turn.id);
+  round.activeTurnId = undefined;
+
+  if (isRoundComplete(room)) {
+    room.state = "BETWEEN_ROUNDS";
+  }
+
+  const teamDelta = sumTurnDelta(turn.outcomes, turn.teamId);
+  const finalScores = { A: room.teams.A.score, B: room.teams.B.score };
+
+  return {
+    turnId: turn.id,
+    turnEnded: {
+      teamDelta,
+      wordsPlayed: turn.outcomes.map(({ cardId, outcome }) => ({
+        cardId,
+        outcome,
+      })),
+      finalScores,
+    },
+    lastCardDelta: { A: 0, B: 0 } as Record<"A" | "B", number>,
+    poetId: turn.poetId,
+    teamId: turn.teamId,
+  };
+}

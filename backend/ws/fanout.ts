@@ -58,3 +58,7 @@ export function emitCardVisibility<TWords, TPlaceholder>(
 
   io.to(poetTeamRoom).except(playerRoom).emit(event, payloads.placeholder);
 }
+
+export function emitRoundEnded(io: Server, roomCode: string, payload: unknown) {
+  io.to(logicalRoom.all(roomCode)).emit("rounds:ended", payload);
+}

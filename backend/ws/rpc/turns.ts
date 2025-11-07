@@ -18,8 +18,9 @@ import {
   forbiddenError,
   requireSession,
 } from "./context";
-import { broadcastRoomState } from "./broadcast";
+import { broadcastRoomState, broadcastRoundEnded } from "./broadcast";
 import { emitCardVisibility, emitToEveryone } from "../fanout";
+import { scheduleTurnTimer, clearTurnTimer } from "./timers";
 
 export function createTurnHandlers(): RpcDefinition<unknown>[] {
   return [
@@ -53,6 +54,12 @@ export function createTurnHandlers(): RpcDefinition<unknown>[] {
         const now = localCtx.now();
         const snap = makeVisibleSnapshot(room, playerId, now);
         broadcastRoomState(localCtx.io, room, now);
+        scheduleTurnTimer(
+          localCtx.io,
+          room.code,
+          result.turn.id,
+          result.turn.endsAt,
+        );
 
         const includeCard = (function () {
           if (result.cardForViewer) return result.cardForViewer;
@@ -147,6 +154,7 @@ export function createTurnHandlers(): RpcDefinition<unknown>[] {
         const liveTurn = room.turns[result.turnId];
 
         if (result.turnEnded) {
+          clearTurnTimer(room.code);
           if (liveTurn) {
             emitCardVisibility(
               localCtx.io,
@@ -174,6 +182,7 @@ export function createTurnHandlers(): RpcDefinition<unknown>[] {
             scores: result.scores,
             lastCardDelta: result.lastCardDelta,
           });
+          broadcastRoundEnded(localCtx.io, room);
         } else if (liveTurn && liveTurn.activeCardId) {
           const words = getCardWords(liveTurn.activeCardId);
           emitCardVisibility(

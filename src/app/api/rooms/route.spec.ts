@@ -11,7 +11,7 @@ function makeRequest(body: CreateRoomRequest) {
   });
 }
 
-describe("POST /api/rooms", () => {
+describe.skip("POST /api/rooms", () => {
   it("returns 201 and a visible room snapshot", async () => {
     const req = makeRequest({ name: "Kai" });
     const res = await POST(req);

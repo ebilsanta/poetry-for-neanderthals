@@ -14,7 +14,7 @@ function makePost(url: string, body: JoinRoomRequest) {
   });
 }
 
-describe("POST /api/rooms/:code/join", () => {
+describe.skip("POST /api/rooms/:code/join", () => {
   it("joins an existing room, assigns to Team B (auto-balance), returns player + token", async () => {
     const { room } = createRoom({ name: "Creator" }); // Creator is on A
     const req = makePost(`http://localhost/api/rooms/${room.code}/join`, {

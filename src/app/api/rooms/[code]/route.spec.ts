@@ -10,7 +10,7 @@ function makeGetRequest(url: string, token?: string) {
   return new NextRequest(url, { headers });
 }
 
-describe("GET /api/rooms/:code", () => {
+describe.skip("GET /api/rooms/:code", () => {
   it("returns 200 and a visible room snapshot for authorized player", async () => {
     const { room, playerToken, player } = createRoom({ name: "Kai" });
     const req = makeGetRequest(

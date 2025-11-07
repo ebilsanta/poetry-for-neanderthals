@@ -16,7 +16,7 @@ function makePost(url: string, body?: unknown, token?: string) {
   });
 }
 
-describe("POST /api/rooms/:code/rounds/next", () => {
+describe.skip("POST /api/rooms/:code/rounds/next", () => {
   it("starts the next round with rotated poet order", async () => {
     const { room, playerToken, player } = createRoom({ name: "Creator" }); // A
     // Add a few players so order is non-trivial

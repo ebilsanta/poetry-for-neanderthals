@@ -27,6 +27,12 @@ export interface Card {
   used: boolean;
 }
 
+export interface RawCard {
+  id: string;
+  onePoint: string;
+  threePoint: string;
+}
+
 export interface TurnOutcome {
   cardId: string;
   outcome: Outcome;

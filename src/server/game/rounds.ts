@@ -1,4 +1,6 @@
 import type { Room } from "@server/game/types";
+import { getAllCardIds } from "@server/game/deck";
+import { shuffle } from "@/server/util/shuffle";
 
 /**
  * Alternating poet order A,B,A,B,... row-wise.
@@ -63,6 +65,10 @@ export function startFirstRound(room: Room) {
       },
     };
   }
+
+  const allCardIds = getAllCardIds();
+  room.drawPile = shuffle(allCardIds);
+  room.discardPile = [];
 
   const number = 1;
   const poetOrder = buildPoetOrder(room);

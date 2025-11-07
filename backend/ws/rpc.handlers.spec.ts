@@ -11,6 +11,7 @@ import type {
 import { createRoomHandlers } from "./rpc/rooms";
 import { createTurnHandlers } from "./rpc/turns";
 import { createRoundHandlers } from "./rpc/rounds";
+import type { Server } from "socket.io";
 
 type SessionState =
   | ReturnType<NonNullable<RpcConnectionHelpers["getContext"]>>
@@ -26,6 +27,16 @@ function collectHandlers(...groups: RpcDefinition<unknown>[]) {
 
 function buildContext() {
   let session: SessionState;
+
+  const chain = {
+    emit: () => chain,
+    except: () => chain,
+  };
+
+  const ioStub = {
+    to: () => chain,
+  } as unknown as Server;
+
   const socket = {
     id: `socket-${Math.random().toString(16).slice(2)}`,
     data: {} as GameSocket["data"],
@@ -47,7 +58,7 @@ function buildContext() {
   };
 
   const ctx: RpcHandlerContext = {
-    io: {} as never,
+    io: ioStub,
     socket,
     helpers,
     now: () => Date.now(),

@@ -9,6 +9,7 @@ import {
   forbiddenError,
   guardErrorToResponse,
 } from "./context";
+import { broadcastRoomState } from "./broadcast";
 
 export function createRoundHandlers(): RpcDefinition<unknown>[] {
   return [
@@ -38,7 +39,9 @@ export function createRoundHandlers(): RpcDefinition<unknown>[] {
         }
 
         setRoom(room);
-        const snap = makeVisibleSnapshot(room, playerId, localCtx.now());
+        const now = localCtx.now();
+        const snap = makeVisibleSnapshot(room, playerId, now);
+        broadcastRoomState(localCtx.io, room, now);
 
         return {
           round: result.round,
@@ -73,7 +76,9 @@ export function createRoundHandlers(): RpcDefinition<unknown>[] {
         }
 
         setRoom(room);
-        const snap = makeVisibleSnapshot(room, playerId, localCtx.now());
+        const now = localCtx.now();
+        const snap = makeVisibleSnapshot(room, playerId, now);
+        broadcastRoomState(localCtx.io, room, now);
 
         return {
           round: result.round,

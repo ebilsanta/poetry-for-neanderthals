@@ -18,6 +18,8 @@ import {
   forbiddenError,
   requireSession,
 } from "./context";
+import { broadcastRoomState } from "./broadcast";
+import { emitCardVisibility, emitToEveryone } from "../fanout";
 
 export function createTurnHandlers(): RpcDefinition<unknown>[] {
   return [
@@ -48,7 +50,9 @@ export function createTurnHandlers(): RpcDefinition<unknown>[] {
 
         setRoom(room);
 
-        const snap = makeVisibleSnapshot(room, playerId, localCtx.now());
+        const now = localCtx.now();
+        const snap = makeVisibleSnapshot(room, playerId, now);
+        broadcastRoomState(localCtx.io, room, now);
 
         const includeCard = (function () {
           if (result.cardForViewer) return result.cardForViewer;
@@ -68,6 +72,33 @@ export function createTurnHandlers(): RpcDefinition<unknown>[] {
             threePoint: words.threePoint,
           };
         })();
+
+        const liveTurn = room.turns[result.turn.id];
+        const activeCardId = liveTurn?.activeCardId;
+        if (liveTurn && activeCardId) {
+          const words = getCardWords(activeCardId);
+          emitCardVisibility(
+            localCtx.io,
+            room.code,
+            liveTurn.poetId,
+            liveTurn.teamId,
+            "turns:card",
+            {
+              words: {
+                turnId: result.turn.id,
+                card: {
+                  id: words.id,
+                  onePoint: words.onePoint,
+                  threePoint: words.threePoint,
+                },
+              },
+              placeholder: {
+                turnId: result.turn.id,
+                card: null,
+              },
+            },
+          );
+        }
 
         return {
           turn: result.turn,
@@ -109,7 +140,66 @@ export function createTurnHandlers(): RpcDefinition<unknown>[] {
 
         setRoom(room);
 
-        const snap = makeVisibleSnapshot(room, playerId, localCtx.now());
+        const now = localCtx.now();
+        const snap = makeVisibleSnapshot(room, playerId, now);
+        broadcastRoomState(localCtx.io, room, now);
+
+        const liveTurn = room.turns[result.turnId];
+
+        if (result.turnEnded) {
+          if (liveTurn) {
+            emitCardVisibility(
+              localCtx.io,
+              room.code,
+              liveTurn.poetId,
+              liveTurn.teamId,
+              "turns:card",
+              {
+                words: {
+                  turnId: result.turnId,
+                  card: null,
+                  turnEnded: result.turnEnded,
+                },
+                placeholder: {
+                  turnId: result.turnId,
+                  card: null,
+                  turnEnded: result.turnEnded,
+                },
+              },
+            );
+          }
+          emitToEveryone(localCtx.io, room.code, "turns:ended", {
+            turnId: result.turnId,
+            turnEnded: result.turnEnded,
+            scores: result.scores,
+            lastCardDelta: result.lastCardDelta,
+          });
+        } else if (liveTurn && liveTurn.activeCardId) {
+          const words = getCardWords(liveTurn.activeCardId);
+          emitCardVisibility(
+            localCtx.io,
+            room.code,
+            liveTurn.poetId,
+            liveTurn.teamId,
+            "turns:card",
+            {
+              words: {
+                turnId: result.turnId,
+                card: {
+                  id: words.id,
+                  onePoint: words.onePoint,
+                  threePoint: words.threePoint,
+                },
+                remainingMs: result.remainingMs,
+              },
+              placeholder: {
+                turnId: result.turnId,
+                card: null,
+                remainingMs: result.remainingMs,
+              },
+            },
+          );
+        }
 
         if (result.turnEnded) {
           return {

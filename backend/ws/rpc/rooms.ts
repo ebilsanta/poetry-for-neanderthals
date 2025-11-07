@@ -19,6 +19,7 @@ import {
   requireSession,
   forbiddenError,
 } from "./context";
+import { broadcastRoomState } from "./broadcast";
 
 export function createRoomHandlers(): RpcDefinition<unknown>[] {
   return [
@@ -31,6 +32,7 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
         }
 
         try {
+          const now = localCtx.now();
           const result = createRoom({
             name: parsed.data.name,
             settings: parsed.data.settings,
@@ -38,11 +40,8 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
 
           localCtx.helpers.bind(result.room, result.player.id);
 
-          const visible = makeVisibleSnapshot(
-            result.room,
-            result.player.id,
-            localCtx.now(),
-          );
+          const visible = makeVisibleSnapshot(result.room, result.player.id, now);
+          broadcastRoomState(localCtx.io, result.room, now);
 
           return {
             room: visible,
@@ -90,11 +89,9 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
 
         localCtx.helpers.bind(result.room, result.player.id);
 
-        const visible = makeVisibleSnapshot(
-          result.room,
-          result.player.id,
-          localCtx.now(),
-        );
+        const now = localCtx.now();
+        const visible = makeVisibleSnapshot(result.room, result.player.id, now);
+        broadcastRoomState(localCtx.io, result.room, now);
 
         return {
           room: visible,
@@ -135,7 +132,9 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
         const updatedSettings = applySettings(room, parsed.data.settings);
         setRoom(room);
 
-        const snap = makeVisibleSnapshot(room, playerId, localCtx.now());
+        const now = localCtx.now();
+        const snap = makeVisibleSnapshot(room, playerId, now);
+        broadcastRoomState(localCtx.io, room, now);
 
         return {
           room: snap,
@@ -180,7 +179,9 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
         setRoom(room);
         localCtx.helpers.bind(room, playerId);
 
-        const snap = makeVisibleSnapshot(room, playerId, localCtx.now());
+        const now = localCtx.now();
+        const snap = makeVisibleSnapshot(room, playerId, now);
+        broadcastRoomState(localCtx.io, room, now);
 
         return {
           room: snap,

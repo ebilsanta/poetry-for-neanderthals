@@ -1,47 +1,69 @@
 import type { Room } from "@server/game/types";
 import { verifyTokenHash } from "@server/auth/token";
+import type { ApiErrorCode } from "@lib/common/errors";
 
-/**
- * Reads Authorization: Bearer <token> from the request and verifies it belongs to a player in the room.
- * Returns { playerId } on success; otherwise an error payload with HTTP status.
- */
+export type GuardErrorCode = ApiErrorCode;
+export type GuardError = {
+  status: number;
+  error: { code: GuardErrorCode; message: string };
+};
+
+/** Bearer token → playerId in this room */
 export function requireAuth(
   req: Request,
   room: Room,
-):
-  | { playerId: string }
-  | {
-      error: { code: "FORBIDDEN" | "VALIDATION"; message: string };
-      status: number;
-    } {
-  const authHeader =
-    req.headers.get("authorization") || req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
+): { playerId: string } | GuardError {
+  const header =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  if (!header.startsWith("Bearer ")) {
     return {
+      status: 400,
       error: {
         code: "VALIDATION",
         message: "Missing or invalid Authorization header",
       },
-      status: 400,
     };
   }
-  const token = authHeader.slice("Bearer ".length).trim();
+  const token = header.slice("Bearer ".length).trim();
   if (!token) {
     return {
-      error: { code: "VALIDATION", message: "Empty bearer token" },
       status: 400,
+      error: { code: "VALIDATION", message: "Empty bearer token" },
     };
   }
 
-  // Find player by matching token hash
   for (const p of Object.values(room.players)) {
-    if (verifyTokenHash(token, p.tokenHash)) {
-      return { playerId: p.id };
-    }
+    if (verifyTokenHash(token, p.tokenHash)) return { playerId: p.id };
   }
-
   return {
-    error: { code: "FORBIDDEN", message: "Invalid token for this room" },
     status: 403,
+    error: { code: "FORBIDDEN", message: "Invalid token for this room" },
   };
+}
+
+export function ensureCreator(
+  room: Room,
+  playerId: string,
+): GuardError | undefined {
+  if (playerId !== room.creatorId) {
+    return {
+      status: 403,
+      error: {
+        code: "FORBIDDEN",
+        message: "Only the creator can perform this action",
+      },
+    };
+  }
+}
+
+export function ensureLobby(room: Room): GuardError | undefined {
+  if (room.state !== "LOBBY") {
+    return {
+      status: 400,
+      error: {
+        code: "BAD_STATE",
+        message: "Settings can only be changed in the lobby",
+      },
+    };
+  }
 }

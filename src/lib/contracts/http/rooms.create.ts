@@ -10,10 +10,12 @@ export const CreateRoomRequest = z.object({
       turnSeconds: z.number().int().min(10).max(600).optional(),
       winningScore: z.number().int().min(1).max(999).optional(),
       allowPass: z.boolean().optional(),
-      teamNames: z.object({
-        A: z.string(),
-        B: z.string(),
-      }).optional(),
+      teamNames: z
+        .object({
+          A: z.string(),
+          B: z.string(),
+        })
+        .optional(),
     })
     .optional(),
 });

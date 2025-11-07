@@ -75,7 +75,9 @@ describe("GET /api/rooms/:code — card visibility", () => {
       `http://localhost/api/rooms/${room.code}`,
       playerToken,
     );
-    const res = await GET(req, { params: { code: room.code } });
+    const res = await GET(req, {
+      params: Promise.resolve({ code: room.code }),
+    });
     expect(res.status).toBe(200);
 
     const json = await res.json();
@@ -105,7 +107,9 @@ describe("GET /api/rooms/:code — card visibility", () => {
         `http://localhost/api/rooms/${room.code}`,
         opponentToken,
       );
-      const res = await GET(req, { params: { code: room.code } });
+      const res = await GET(req, {
+        params: Promise.resolve({ code: room.code }),
+      });
       expect(res.status).toBe(200);
       const json = await res.json();
       const activeCard = json.room?.round?.activeTurn?.activeCard;
@@ -120,7 +124,9 @@ describe("GET /api/rooms/:code — card visibility", () => {
         `http://localhost/api/rooms/${room.code}`,
         teammateToken,
       );
-      const res = await GET(req, { params: { code: room.code } });
+      const res = await GET(req, {
+        params: Promise.resolve({ code: room.code }),
+      });
       expect(res.status).toBe(200);
       const json = await res.json();
       const activeCard = json.room?.round?.activeTurn?.activeCard;
@@ -135,7 +141,9 @@ describe("GET /api/rooms/:code — card visibility", () => {
         `http://localhost/api/rooms/${room.code}`,
         creatorToken,
       );
-      const res = await GET(req, { params: { code: room.code } });
+      const res = await GET(req, {
+        params: Promise.resolve({ code: room.code }),
+      });
       expect(res.status).toBe(200);
       const json = await res.json();
       const activeCard = json.room?.round?.activeTurn?.activeCard;

@@ -17,7 +17,9 @@ describe("GET /api/rooms/:code", () => {
       `http://localhost/api/rooms/${room.code}`,
       playerToken,
     );
-    const res = await GET(req, { params: { code: room.code } });
+    const res = await GET(req, {
+      params: Promise.resolve({ code: room.code }),
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.room?.code).toBe(room.code);
@@ -28,7 +30,7 @@ describe("GET /api/rooms/:code", () => {
 
   it("returns 404 for unknown room", async () => {
     const req = makeGetRequest("http://localhost/api/rooms/ZZZ", "fake");
-    const res = await GET(req, { params: { code: "ZZZ" } });
+    const res = await GET(req, { params: Promise.resolve({ code: "ZZZ" }) });
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error?.code).toBe("ROOM_NOT_FOUND");
@@ -37,7 +39,9 @@ describe("GET /api/rooms/:code", () => {
   it("returns 400 when Authorization header is missing", async () => {
     const { room } = createRoom({ name: "Kai" });
     const req = makeGetRequest(`http://localhost/api/rooms/${room.code}`);
-    const res = await GET(req, { params: { code: room.code } });
+    const res = await GET(req, {
+      params: Promise.resolve({ code: room.code }),
+    });
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error?.code).toBe("VALIDATION");
@@ -49,7 +53,9 @@ describe("GET /api/rooms/:code", () => {
       `http://localhost/api/rooms/${room.code}`,
       "wrong",
     );
-    const res = await GET(req, { params: { code: room.code } });
+    const res = await GET(req, {
+      params: Promise.resolve({ code: room.code }),
+    });
     expect(res.status).toBe(403);
     const json = await res.json();
     expect(json.error?.code).toBe("FORBIDDEN");

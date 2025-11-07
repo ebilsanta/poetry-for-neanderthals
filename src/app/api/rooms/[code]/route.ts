@@ -8,9 +8,10 @@ export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { code: string } },
+  { params }: { params: Promise<{ code: string }> },
 ) {
-  const code = (params.code || "").toUpperCase();
+  const { code: codeParam } = await params;
+  const code = (codeParam || "").toUpperCase();
   const room = getRoom(code);
   if (!room) {
     const res: GetRoomResponse = {

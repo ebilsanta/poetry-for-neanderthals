@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from "socket.io";
 
 import { registerSocketHandlers } from "../ws/handlers";
 import { getRoom } from "@server/game/store";
+import { initGameServer } from "@server/game/init";
 import type { RoomState } from "@lib/common/enums";
 
 type GetRoomResponse =
@@ -50,6 +51,8 @@ export async function createServer() {
   );
 
   await fastify.ready();
+
+  initGameServer();
 
   const io = new SocketIOServer(fastify.server, {
     cors: {

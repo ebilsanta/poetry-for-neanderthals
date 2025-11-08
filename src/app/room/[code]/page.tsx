@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   Container,
+  Divider,
   Group,
   Loader,
   Notification,
   Paper,
+  Progress,
   Stack,
   Text,
   Title,
@@ -27,7 +30,7 @@ import {
 import { useParams } from "next/navigation";
 import { GetRoomResponse } from "@lib/contracts/http/rooms.get";
 import type { JoinRoomResponse } from "@lib/contracts/http/rooms.join";
-import type { VisibleRoomSnapshot } from "@lib/view/visible";
+import type { VisibleRoomSnapshot, VisibleCard } from "@lib/view/visible";
 import type { JoinRoomRequest } from "@lib/contracts/http/rooms.join";
 import type { StartRoundResponse } from "@lib/contracts/http/rounds.start";
 
@@ -36,6 +39,11 @@ const STORAGE_KEYS = {
   playerName: "pfn_player_name",
   token: "pfn_token",
 };
+
+type CardOverrideState = {
+  card: VisibleCard | null;
+  remainingMs?: number;
+} | null;
 
 type StoredSession = {
   playerId?: string;
@@ -70,6 +78,8 @@ export default function RoomPage() {
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
   const [startingTurn, setStartingTurn] = useState(false);
+  const [cardOverride, setCardOverride] = useState<CardOverrideState>(null);
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   const session = useMemo(() => getStoredSession(), []);
   const socketRef = useRef<ReturnType<typeof createRoomSocket> | null>(null);
@@ -84,6 +94,39 @@ export default function RoomPage() {
   const backendUrl = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:4000";
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? backendUrl;
 
+  const syncCardFromSnapshot = useCallback(
+    (snap: {
+      state: VisibleRoomSnapshot["state"];
+      round?: VisibleRoomSnapshot["round"];
+    }) => {
+      if (snap.state !== "IN_ROUND" || !snap.round?.activeTurn) {
+        setCardOverride(null);
+        return;
+      }
+      const active = snap.round.activeTurn;
+      const hasWords =
+        Boolean(active.activeCard?.onePoint) &&
+        active.activeCard?.onePoint !== "REDACTED_AT_SEND" &&
+        Boolean(active.activeCard?.threePoint) &&
+        active.activeCard?.threePoint !== "REDACTED_AT_SEND";
+      setCardOverride({
+        card: hasWords
+          ? {
+              id: active.activeCard!.id,
+              onePoint: active.activeCard!.onePoint!,
+              threePoint: active.activeCard!.threePoint ?? "",
+            }
+          : null,
+        remainingMs:
+          active.remainingSeconds !== undefined
+            ? active.remainingSeconds * 1000
+            : active.endsAt
+              ? Math.max(0, active.endsAt - Date.now())
+              : undefined,
+      });
+    },
+    [],
+  );
   const ensureSocket = useCallback(async () => {
     if (!roomCode) {
       throw new Error("Missing room code");
@@ -107,11 +150,29 @@ export default function RoomPage() {
       onRoomState: ({ room: snap }) => {
         setRoom(snap);
         setRoomInfo({ code: snap.code, state: snap.state });
+        syncCardFromSnapshot(snap);
+      },
+      onTurnCard: (payload) => {
+        setCardOverride({
+          card: payload.card
+            ? {
+                id: payload.card.id,
+                onePoint: payload.card.onePoint,
+                threePoint: payload.card.threePoint,
+              }
+            : null,
+          remainingMs: payload.remainingMs,
+        });
+      },
+      onTurnEnded: () => {
+        setCardOverride(null);
+        setStartingTurn(false);
       },
       onRoundEnded: () => {
         setRoomInfo((prev) =>
           prev ? { ...prev, state: "BETWEEN_ROUNDS" } : prev,
         );
+        setCardOverride(null);
       },
     };
 
@@ -119,7 +180,7 @@ export default function RoomPage() {
     detachHandlersRef.current = attachRoomEventHandlers(socket, handlers);
 
     return socket;
-  }, [backendUrl, roomCode, session]);
+  }, [backendUrl, roomCode, session, syncCardFromSnapshot]);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,6 +214,7 @@ export default function RoomPage() {
         if (cancelled) return;
 
         setRoomInfo(data.room);
+        syncCardFromSnapshot(data.room);
 
         if (session && session.playerToken && session.playerName) {
           try {
@@ -171,6 +233,7 @@ export default function RoomPage() {
             }
 
             setRoom(response.room);
+            syncCardFromSnapshot(response.room);
             setRoomInfo({
               code: response.room.code,
               state: response.room.state,
@@ -216,7 +279,7 @@ export default function RoomPage() {
         socketRef.current = null;
       }
     };
-  }, [apiBaseUrl, ensureSocket, roomCode, session]);
+  }, [apiBaseUrl, ensureSocket, roomCode, session, syncCardFromSnapshot]);
 
   const handleCopyCode = useCallback(() => {
     const code = room?.code ?? roomCode;
@@ -283,6 +346,17 @@ export default function RoomPage() {
     });
   };
 
+  const activeTurnEndsAt = room?.round?.activeTurn?.endsAt ?? null;
+
+  useEffect(() => {
+    if (!activeTurnEndsAt && cardOverride?.remainingMs == null) {
+      return;
+    }
+    setNowTs(Date.now());
+    const id = window.setInterval(() => setNowTs(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [activeTurnEndsAt, cardOverride?.remainingMs]);
+
   const round = room?.round;
   const activeTurn = round?.activeTurn;
   const completedTurnsCount = round?.completedTurns ?? 0;
@@ -299,6 +373,46 @@ export default function RoomPage() {
     currentPoetId !== undefined && currentPoetId === playerId;
   const canStartTurn = isCurrentPoet && !hasActiveTurn;
 
+  const activeCard =
+    cardOverride?.card ?? round?.activeTurn?.activeCard ?? null;
+  const overrideRemainingMs = cardOverride?.remainingMs ?? null;
+  const endsAt = round?.activeTurn?.endsAt ?? null;
+  const startedAt = round?.activeTurn?.startedAt ?? null;
+  const totalDurationMs =
+    endsAt && startedAt
+      ? endsAt - startedAt
+      : room?.settings.turnSeconds
+        ? room.settings.turnSeconds * 1000
+        : null;
+  const computedRemainingMs = endsAt
+    ? Math.max(0, endsAt - nowTs)
+    : overrideRemainingMs !== null
+      ? Math.max(0, overrideRemainingMs)
+      : null;
+  const remainingSeconds =
+    computedRemainingMs !== null
+      ? Math.max(0, Math.ceil(computedRemainingMs / 1000))
+      : null;
+  const percentRemaining =
+    totalDurationMs && computedRemainingMs !== null && totalDurationMs > 0
+      ? Math.max(
+          0,
+          Math.min(100, (computedRemainingMs / totalDurationMs) * 100),
+        )
+      : null;
+  const showTimer =
+    room?.state === "IN_ROUND" &&
+    remainingSeconds !== null &&
+    totalDurationMs !== null;
+  const displayCard =
+    activeCard &&
+    activeCard.onePoint &&
+    activeCard.onePoint !== "REDACTED_AT_SEND" &&
+    activeCard.threePoint &&
+    activeCard.threePoint !== "REDACTED_AT_SEND"
+      ? activeCard
+      : null;
+
   const poetTurnLabel = currentPoetName
     ? currentPoetName.endsWith("s")
       ? `${currentPoetName}\u2019 turn.`
@@ -306,6 +420,7 @@ export default function RoomPage() {
     : "Waiting for next poet...";
 
   const handleStartTurn = useCallback(async () => {
+    if (!room) return;
     setStartingTurn(true);
     try {
       const socket = await ensureSocket();
@@ -321,7 +436,7 @@ export default function RoomPage() {
     } finally {
       setStartingTurn(false);
     }
-  }, [ensureSocket]);
+  }, [ensureSocket, room]);
 
   if (loading) {
     return (
@@ -535,7 +650,7 @@ export default function RoomPage() {
         </Group>
       ) : (
         <Group justify="center" gap="xs" mt="md">
-          <Text c="dimmed">Waiting for creator to start room</Text>
+          <Text c="dimmed">Waiting for host to start room</Text>
           <Loader size="xs" />
         </Group>
       )}
@@ -547,6 +662,101 @@ export default function RoomPage() {
       <Title order={3}>
         {room.state === "IN_ROUND" ? `Round ${round?.number ?? ""}` : "Game"}
       </Title>
+
+      {showTimer ? (
+        <Box pos="relative" w="100%">
+          <Progress
+            value={percentRemaining ?? 0}
+            size="xl"
+            radius="xl"
+            color="yellow"
+            w="100%"
+            striped
+            animated
+          />
+          {remainingSeconds !== null ? (
+            <Text
+              size="sm"
+              fw={600}
+              c="var(--mantine-color-dark-9)"
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {remainingSeconds}s
+            </Text>
+          ) : null}
+        </Box>
+      ) : null}
+
+      {room.state === "IN_ROUND" ? (
+        displayCard ? (
+          <Paper
+            shadow="md"
+            radius="lg"
+            withBorder
+            w="100%"
+            maw={360}
+            px="md"
+            py={0}
+          >
+            <Stack gap={0}>
+              <Box
+                style={{
+                  background: "var(--mantine-color-blue-light)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+                py="lg"
+              >
+                <Badge color="blue" radius="xl" size="lg">
+                  1
+                </Badge>
+                <Text size="xl" fw={700} ta="center">
+                  {displayCard.onePoint}
+                </Text>
+              </Box>
+              <Divider color="var(--mantine-color-gray-3)" />
+              <Box
+                style={{
+                  background: "var(--mantine-color-orange-light)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+                py="lg"
+              >
+                <Text size="xl" fw={700} ta="center">
+                  {displayCard.threePoint}
+                </Text>
+                <Badge color="orange" radius="xl" size="lg">
+                  3
+                </Badge>
+              </Box>
+            </Stack>
+          </Paper>
+        ) : (
+          <Paper
+            shadow="xs"
+            radius="md"
+            withBorder
+            px="lg"
+            py="md"
+            bg="var(--mantine-color-gray-light)"
+          >
+            <Text fw={600} ta="center">
+              Happy guessing!
+            </Text>
+          </Paper>
+        )
+      ) : null}
 
       {room.state === "IN_ROUND" ? (
         isCurrentPoet ? (

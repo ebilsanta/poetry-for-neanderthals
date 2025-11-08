@@ -2,9 +2,15 @@ import { io, type Socket } from "socket.io-client";
 
 import type { VisibleRoomSnapshot } from "@lib/view/visible";
 
+type TurnCardPayload = {
+  turnId: string;
+  card: { id: string; onePoint?: string; threePoint?: string } | null;
+  remainingMs?: number;
+};
+
 type ServerToClientEvents = {
   "room:state": (payload: { room: VisibleRoomSnapshot }) => void;
-  "turns:card": (payload: unknown) => void;
+  "turns:card": (payload: TurnCardPayload) => void;
   "turns:ended": (payload: unknown) => void;
   "rounds:ended": (payload: unknown) => void;
 };
@@ -70,7 +76,7 @@ export function updateRoomSocketAuth(
 
 export type RoomEventHandlers = {
   onRoomState?: (payload: { room: VisibleRoomSnapshot }) => void;
-  onTurnCard?: (payload: unknown) => void;
+  onTurnCard?: (payload: TurnCardPayload) => void;
   onTurnEnded?: (payload: unknown) => void;
   onRoundEnded?: (payload: unknown) => void;
 };
@@ -89,7 +95,8 @@ export function attachRoomEventHandlers(
   }
 
   if (handlers.onTurnCard) {
-    const listener = (payload: unknown) => handlers.onTurnCard?.(payload);
+    const listener = (payload: TurnCardPayload) =>
+      handlers.onTurnCard?.(payload);
     socket.on("turns:card", listener);
     cleanups.push(() => socket.off("turns:card", listener));
   }

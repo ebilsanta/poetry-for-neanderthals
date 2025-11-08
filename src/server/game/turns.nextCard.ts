@@ -131,7 +131,7 @@ export function scoreCurrentAndMaybeNextCard(
   if (timeUp || noMoreCards) {
     turn.endedReason = timeUp ? "TIMER" : "MANUAL";
     // close the turn
-    round.completedTurns.push(turn.id);
+    round.completedTurns.push(turn.poetId);
     round.activeTurnId = undefined;
 
     // if round finished, move room to BETWEEN_ROUNDS
@@ -164,7 +164,7 @@ export function scoreCurrentAndMaybeNextCard(
   if (!nextCardId) {
     // Should not happen because we checked noMoreCards, but guard anyway
     turn.endedReason = "MANUAL";
-    round.completedTurns.push(turn.id);
+    round.completedTurns.push(turn.poetId);
     round.activeTurnId = undefined;
     const teamDelta = sumTurnDelta(turn.outcomes, turn.teamId);
     const finalScores = { A: room.teams.A.score, B: room.teams.B.score };
@@ -219,7 +219,7 @@ export function forceEndTurn(room: Room) {
   }
 
   turn.endedReason = "TIMER";
-  round.completedTurns.push(turn.id);
+  round.completedTurns.push(turn.poetId);
   round.activeTurnId = undefined;
 
   if (isRoundComplete(room)) {

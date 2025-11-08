@@ -31,6 +31,13 @@ export function scheduleTurnTimer(
   clearTurnTimer(roomCode);
   const key = timerKey(roomCode);
 
+  io.of("/").serverSideEmit("timers:scheduled", {
+    roomCode,
+    turnId,
+    endsAt,
+    delay,
+  });
+
   const timeout = setTimeout(() => {
     const room = getRoom(roomCode);
     if (!room || room.state !== "IN_ROUND" || !room.currentRound) return;
@@ -40,6 +47,12 @@ export function scheduleTurnTimer(
 
     const result = forceEndTurn(room);
     if (!result) return;
+
+    io.of("/").serverSideEmit("timers:triggered", {
+      roomCode,
+      turnId,
+      reason: "ENDS_AT",
+    });
 
     setRoom(room);
 
@@ -74,6 +87,11 @@ export function scheduleTurnTimer(
     });
 
     broadcastRoundEnded(io, room);
+
+    io.of("/").serverSideEmit("timers:cleared", {
+      roomCode,
+      turnId,
+    });
 
     clearTurnTimer(roomCode);
   }, delay);

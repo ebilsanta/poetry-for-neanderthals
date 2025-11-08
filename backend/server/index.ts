@@ -3,6 +3,12 @@ import fastifyCors from "@fastify/cors";
 import { Server as SocketIOServer } from "socket.io";
 
 import { registerSocketHandlers } from "../ws/handlers";
+import { getRoom } from "@server/game/store";
+import type { RoomState } from "@lib/common/enums";
+
+type GetRoomResponse =
+  | { room: { code: string; state: RoomState } }
+  | { error: { code: string; message: string } };
 
 const DEFAULT_PORT = 4000;
 const DEFAULT_HOST = "0.0.0.0";
@@ -22,6 +28,26 @@ export async function createServer() {
       cb(null, allowList.includes(origin));
     },
   });
+
+  fastify.get<{ Params: { code: string } }, GetRoomResponse>(
+    "/rooms/:code",
+    async (request, reply) => {
+      const code = (request.params.code ?? "").toUpperCase();
+      const room = getRoom(code);
+      if (!room) {
+        return reply.status(404).send({
+          error: { code: "ROOM_NOT_FOUND", message: "Room not found" },
+        });
+      }
+
+      return reply.send({
+        room: {
+          code: room.code,
+          state: room.state,
+        },
+      });
+    },
+  );
 
   await fastify.ready();
 

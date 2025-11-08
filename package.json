@@ -42,6 +42,7 @@
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.6.2",
     "tailwindcss": "^4",
+    "tsx": "^4.20.6",
     "typescript": "^5",
     "vitest": "^4.0.7"
   }

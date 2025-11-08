@@ -76,12 +76,15 @@ devDependencies:
   tailwindcss:
     specifier: ^4
     version: 4.1.17
+  tsx:
+    specifier: ^4.20.6
+    version: 4.20.6
   typescript:
     specifier: ^5
     version: 5.9.3
   vitest:
     specifier: ^4.0.7
-    version: 4.0.7(@types/node@20.19.24)(@vitest/ui@4.0.7)
+    version: 4.0.7(@types/node@20.19.24)(@vitest/ui@4.0.7)(tsx@4.20.6)
 
 packages:
 
@@ -1795,7 +1798,7 @@ packages:
       '@vitest/spy': 4.0.7
       estree-walker: 3.0.3
       magic-string: 0.30.21
-      vite: 7.2.1(@types/node@20.19.24)
+      vite: 7.2.1(@types/node@20.19.24)(tsx@4.20.6)
     dev: true
 
   /@vitest/pretty-format@4.0.7:
@@ -1835,7 +1838,7 @@ packages:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vitest: 4.0.7(@types/node@20.19.24)(@vitest/ui@4.0.7)
+      vitest: 4.0.7(@types/node@20.19.24)(@vitest/ui@4.0.7)(tsx@4.20.6)
     dev: true
 
   /@vitest/utils@4.0.7:
@@ -4816,6 +4819,17 @@ packages:
   /tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  /tsx@4.20.6:
+    resolution: {integrity: sha512-ytQKuwgmrrkDTFP4LjR0ToE2nqgy886GpvRSpU0JAnrdBYppuY5rLkRUYPU1yCryb24SsKBTL/hlDQAEFVwtZg==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+    dependencies:
+      esbuild: 0.25.12
+      get-tsconfig: 4.13.0
+    optionalDependencies:
+      fsevents: 2.3.3
+    dev: true
+
   /type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -5032,7 +5046,7 @@ packages:
     engines: {node: '>= 0.8'}
     dev: false
 
-  /vite@7.2.1(@types/node@20.19.24):
+  /vite@7.2.1(@types/node@20.19.24)(tsx@4.20.6):
     resolution: {integrity: sha512-qTl3VF7BvOupTR85Zc561sPEgxyUSNSvTQ9fit7DEMP7yPgvvIGm5Zfa1dOM+kOwWGNviK9uFM9ra77+OjK7lQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
@@ -5079,11 +5093,12 @@ packages:
       postcss: 8.5.6
       rollup: 4.52.5
       tinyglobby: 0.2.15
+      tsx: 4.20.6
     optionalDependencies:
       fsevents: 2.3.3
     dev: true
 
-  /vitest@4.0.7(@types/node@20.19.24)(@vitest/ui@4.0.7):
+  /vitest@4.0.7(@types/node@20.19.24)(@vitest/ui@4.0.7)(tsx@4.20.6):
     resolution: {integrity: sha512-xQroKAadK503CrmbzCISvQUjeuvEZzv6U0wlnlVFOi5i3gnzfH4onyQ29f3lzpe0FresAiTAd3aqK0Bi/jLI8w==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
     hasBin: true
@@ -5137,7 +5152,7 @@ packages:
       tinyexec: 0.3.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.2.1(@types/node@20.19.24)
+      vite: 7.2.1(@types/node@20.19.24)(tsx@4.20.6)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - jiti

@@ -11,6 +11,7 @@ import { applySettings } from "@server/game/settings";
 import { reassignPlayers } from "@server/game/teams";
 import { setRoom } from "@server/game/store";
 import { ensureCreator, ensureLobby } from "@server/http/guards";
+import { generateToken, hashToken } from "@server/auth/token";
 
 import {
   type RpcDefinition,
@@ -40,7 +41,11 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
 
           localCtx.helpers.bind(result.room, result.player.id);
 
-          const visible = makeVisibleSnapshot(result.room, result.player.id, now);
+          const visible = makeVisibleSnapshot(
+            result.room,
+            result.player.id,
+            now,
+          );
           broadcastRoomState(localCtx.io, result.room, now);
 
           return {
@@ -74,6 +79,66 @@ export function createRoomHandlers(): RpcDefinition<unknown>[] {
         const parsed = JoinRoomRequest.safeParse(envelope.body ?? {});
         if (!parsed.success) {
           return validationError(parsed.error.message);
+        }
+
+        const existingSession = localCtx.helpers.getContext();
+        if (existingSession && existingSession.room.code === code) {
+          const { room, player, playerId } = existingSession;
+
+          // Refresh the player's token so subsequent reconnects require the new token.
+          const nextToken = generateToken();
+          player.tokenHash = hashToken(nextToken);
+
+          localCtx.helpers.bind(room, playerId);
+
+          const now = localCtx.now();
+          const visible = makeVisibleSnapshot(room, playerId, now);
+          broadcastRoomState(localCtx.io, room, now);
+
+          return {
+            room: visible,
+            player: {
+              id: player.id,
+              name: player.name,
+              teamId: player.teamId,
+              isCreator: player.isCreator,
+            },
+            playerToken: nextToken,
+          };
+        }
+
+        if (existingSession && existingSession.room.code !== code) {
+          // same player connecting to a different room; clear session and continue with fresh join
+          localCtx.helpers.clearSession();
+        }
+
+        const activeSession =
+          existingSession && existingSession.room.code === code
+            ? existingSession
+            : undefined;
+
+        if (activeSession) {
+          const { room, player, playerId } = activeSession;
+
+          const nextToken = generateToken();
+          player.tokenHash = hashToken(nextToken);
+
+          localCtx.helpers.bind(room, playerId);
+
+          const now = localCtx.now();
+          const visible = makeVisibleSnapshot(room, playerId, now);
+          broadcastRoomState(localCtx.io, room, now);
+
+          return {
+            room: visible,
+            player: {
+              id: player.id,
+              name: player.name,
+              teamId: player.teamId,
+              isCreator: player.isCreator,
+            },
+            playerToken: nextToken,
+          };
         }
 
         const result = joinRoom({ code, name: parsed.data.name });

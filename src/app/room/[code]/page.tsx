@@ -13,9 +13,15 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { io, type Socket } from "socket.io-client";
-
 import { callRpc } from "@/lib/realtime/rpc";
+import {
+  attachRoomEventHandlers,
+  connectRoomSocket,
+  createRoomSocket,
+  disconnectRoomSocket,
+  type RoomEventHandlers,
+  updateRoomSocketAuth,
+} from "@/lib/realtime/socketManager";
 import { useParams } from "next/navigation";
 import { GetRoomResponse } from "@lib/contracts/http/rooms.get";
 import type { JoinRoomResponse } from "@lib/contracts/http/rooms.join";
@@ -62,7 +68,8 @@ export default function RoomPage() {
   const [joining, setJoining] = useState(false);
 
   const session = useMemo(() => getStoredSession(), []);
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<ReturnType<typeof createRoomSocket> | null>(null);
+  const detachHandlersRef = useRef<(() => void) | null>(null);
 
   const params = useParams<{ code?: string }>();
   const roomCode = useMemo(
@@ -78,37 +85,37 @@ export default function RoomPage() {
       throw new Error("Missing room code");
     }
 
-    if (socketRef.current && socketRef.current.connected) {
-      return socketRef.current;
+    if (!socketRef.current) {
+      socketRef.current = createRoomSocket({
+        baseUrl: backendUrl,
+        roomCode,
+        token: session?.playerToken,
+      });
+    } else if (session?.playerToken) {
+      updateRoomSocketAuth(socketRef.current, roomCode, session.playerToken);
     }
 
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
+    const socket = socketRef.current;
 
-    const socket = io(backendUrl, {
-      transports: ["websocket"],
-      autoConnect: false,
-      auth:
-        session && session.playerToken
-          ? {
-              code: roomCode,
-              token: session.playerToken,
-            }
-          : undefined,
-    });
+    await connectRoomSocket(socket);
 
-    socketRef.current = socket;
+    const handlers: RoomEventHandlers = {
+      onRoomState: ({ room: snap }) => {
+        setRoom(snap);
+        setRoomInfo({ code: snap.code, state: snap.state });
+      },
+      onRoundEnded: () => {
+        setRoomInfo((prev) =>
+          prev ? { ...prev, state: "BETWEEN_ROUNDS" } : prev,
+        );
+      },
+    };
 
-    await new Promise<void>((resolve, reject) => {
-      socket.once("connect", resolve);
-      socket.once("connect_error", reject);
-      socket.connect();
-    });
+    detachHandlersRef.current?.();
+    detachHandlersRef.current = attachRoomEventHandlers(socket, handlers);
 
     return socket;
-  }, [backendUrl, roomCode, session?.playerToken]);
+  }, [backendUrl, roomCode, session]);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,18 +205,14 @@ export default function RoomPage() {
 
     return () => {
       cancelled = true;
+      detachHandlersRef.current?.();
+      detachHandlersRef.current = null;
       if (socketRef.current) {
-        socketRef.current.disconnect();
+        disconnectRoomSocket(socketRef.current);
         socketRef.current = null;
       }
     };
-  }, [
-    apiBaseUrl,
-    ensureSocket,
-    roomCode,
-    session?.playerName,
-    session?.playerToken,
-  ]);
+  }, [apiBaseUrl, ensureSocket, roomCode, session]);
 
   const handleCopyCode = useCallback(() => {
     const code = room?.code ?? roomCode;

@@ -19,5 +19,3 @@ export function broadcastRoundEnded(io: Server, room: Room) {
     round: room.currentRound,
   });
 }
-
-

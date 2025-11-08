@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionIcon,
+  Box,
   Button,
   Container,
   Group,
@@ -12,6 +13,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { callRpc } from "@/lib/realtime/rpc";
 import {
@@ -27,6 +29,7 @@ import { GetRoomResponse } from "@lib/contracts/http/rooms.get";
 import type { JoinRoomResponse } from "@lib/contracts/http/rooms.join";
 import type { VisibleRoomSnapshot } from "@lib/view/visible";
 import type { JoinRoomRequest } from "@lib/contracts/http/rooms.join";
+import type { StartRoundResponse } from "@lib/contracts/http/rounds.start";
 
 const STORAGE_KEYS = {
   playerId: "pfn_player_id",
@@ -66,6 +69,7 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
+  const [startingTurn, setStartingTurn] = useState(false);
 
   const session = useMemo(() => getStoredSession(), []);
   const socketRef = useRef<ReturnType<typeof createRoomSocket> | null>(null);
@@ -223,16 +227,47 @@ export default function RoomPage() {
       .catch((err) => console.error("Failed to copy room code", err));
   }, [room, roomCode]);
 
-  const handleOpenSettings = () => {
-    console.log("open settings");
-  };
-
   const playersById = useMemo(() => {
     if (!room) {
       return new Map<string, VisibleRoomSnapshot["players"][number]>();
     }
     return new Map(room.players.map((p) => [p.id, p]));
   }, [room]);
+
+  const handleOpenSettings = () => {
+    console.log("open settings");
+  };
+
+  const playerId = session?.playerId;
+  const viewer = playerId ? playersById.get(playerId) : undefined;
+  const isCreator = viewer?.isCreator ?? false;
+  const playerCount = room?.players.length ?? 0;
+  const canStartGame = playerCount >= 2;
+
+  const tooltipLabel = (() => {
+    if (!canStartGame) return "Need at least two players to start";
+    return null;
+  })();
+
+  const handleStartGame = useCallback(async () => {
+    if (!room || !socketRef.current) return;
+    try {
+      const socket = await ensureSocket();
+      const response = (await callRpc(
+        socket,
+        "rounds:start",
+        {},
+      )) as StartRoundResponse;
+      if ("error" in response) {
+        setError(response.error.message);
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      console.error("Failed to start game", err);
+      setError("Unable to start the game. Please try again.");
+    }
+  }, [ensureSocket, room]);
 
   const renderTeam = (teamId: "A" | "B") => {
     if (!room) return null;
@@ -247,6 +282,46 @@ export default function RoomPage() {
       );
     });
   };
+
+  const round = room?.round;
+  const activeTurn = round?.activeTurn;
+  const completedTurnsCount = round?.completedTurns ?? 0;
+  const nextPoetIdFromOrder =
+    round && completedTurnsCount < round.poetOrder.length
+      ? round.poetOrder[completedTurnsCount]
+      : undefined;
+  const currentPoetId = activeTurn?.poetId ?? nextPoetIdFromOrder;
+  const currentPoetName = currentPoetId
+    ? playersById.get(currentPoetId)?.name
+    : undefined;
+  const hasActiveTurn = Boolean(activeTurn);
+  const isCurrentPoet =
+    currentPoetId !== undefined && currentPoetId === playerId;
+  const canStartTurn = isCurrentPoet && !hasActiveTurn;
+
+  const poetTurnLabel = currentPoetName
+    ? currentPoetName.endsWith("s")
+      ? `${currentPoetName}\u2019 turn.`
+      : `${currentPoetName}'s turn.`
+    : "Waiting for next poet...";
+
+  const handleStartTurn = useCallback(async () => {
+    setStartingTurn(true);
+    try {
+      const socket = await ensureSocket();
+      const response = await callRpc(socket, "turns:start", {});
+      if ("error" in response) {
+        setError(response.error.message);
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      console.error("Failed to start turn", err);
+      setError("Unable to start the turn. Please try again.");
+    } finally {
+      setStartingTurn(false);
+    }
+  }, [ensureSocket]);
 
   if (loading) {
     return (
@@ -387,42 +462,44 @@ export default function RoomPage() {
     return null;
   }
 
-  return (
-    <Container size={460} px="md" py="xl">
-      <Stack gap="lg">
-        <Group justify="space-between">
-          <Title order={3}>Room Lobby</Title>
-          <ActionIcon
-            variant="subtle"
-            size="lg"
-            radius="lg"
-            aria-label="Room settings"
-            onClick={handleOpenSettings}
-          >
-            ⚙️
-          </ActionIcon>
-        </Group>
+  const lobbyContent = (
+    <>
+      <Group justify="space-between" align="flex-start">
+        <Title order={3}>Room Lobby</Title>
+        <ActionIcon
+          variant="subtle"
+          size="lg"
+          radius="lg"
+          aria-label="Room settings"
+          onClick={handleOpenSettings}
+        >
+          ⚙️
+        </ActionIcon>
+      </Group>
 
-        <Paper shadow="sm" radius="md" p="lg" withBorder>
-          <Stack gap="sm" align="center">
-            <Text c="dimmed" size="sm">
-              Share this code with other players
-            </Text>
-            <Group gap="sm">
-              <Title order={1} tt="uppercase">
-                {room.code}
-              </Title>
-              <Button
-                variant="light"
-                size="compact-md"
-                onClick={handleCopyCode}
-              >
-                Copy
-              </Button>
-            </Group>
-          </Stack>
-        </Paper>
+      <Paper shadow="sm" radius="md" p="lg" withBorder>
+        <Stack gap="sm" align="center">
+          <Text c="dimmed" size="sm">
+            Share this code with other players
+          </Text>
+          <Group gap="sm">
+            <Title order={1} tt="uppercase">
+              {room.code}
+            </Title>
+            <Button variant="light" size="compact-md" onClick={handleCopyCode}>
+              Copy
+            </Button>
+          </Group>
+        </Stack>
+      </Paper>
 
+      <Box
+        w="100%"
+        style={{
+          maxHeight: "40vh",
+          overflowY: "auto",
+        }}
+      >
         <Stack gap="md">
           <Paper shadow="xs" radius="md" p="md" withBorder>
             <Title order={4}>Team A</Title>
@@ -438,6 +515,74 @@ export default function RoomPage() {
             </Stack>
           </Paper>
         </Stack>
+      </Box>
+
+      {isCreator ? (
+        <Group justify="center" mt="md">
+          <Tooltip
+            label={tooltipLabel}
+            disabled={tooltipLabel === null}
+            position="top"
+          >
+            <Button
+              size="md"
+              onClick={handleStartGame}
+              disabled={!canStartGame}
+            >
+              Start Game
+            </Button>
+          </Tooltip>
+        </Group>
+      ) : (
+        <Group justify="center" gap="xs" mt="md">
+          <Text c="dimmed">Waiting for creator to start room</Text>
+          <Loader size="xs" />
+        </Group>
+      )}
+    </>
+  );
+
+  const inGameContent = (
+    <Stack align="center" gap="lg">
+      <Title order={3}>
+        {room.state === "IN_ROUND" ? `Round ${round?.number ?? ""}` : "Game"}
+      </Title>
+
+      {room.state === "IN_ROUND" ? (
+        isCurrentPoet ? (
+          <Stack align="center" gap="sm">
+            <Text fw={600}>Your turn</Text>
+            <Button
+              size="md"
+              onClick={handleStartTurn}
+              disabled={!canStartTurn || startingTurn}
+              loading={startingTurn}
+            >
+              {hasActiveTurn ? "Turn In Progress" : "Start Turn"}
+            </Button>
+            {hasActiveTurn ? (
+              <Text c="dimmed" size="sm">
+                Your turn is already active.
+              </Text>
+            ) : null}
+          </Stack>
+        ) : (
+          <Text c="dimmed">{poetTurnLabel}</Text>
+        )
+      ) : (
+        <Text c="dimmed">
+          {room.state === "BETWEEN_ROUNDS"
+            ? "Waiting for the next round to begin."
+            : "Game has ended."}
+        </Text>
+      )}
+    </Stack>
+  );
+
+  return (
+    <Container size={460} px="md" py="xl">
+      <Stack gap="lg">
+        {room.state === "LOBBY" ? lobbyContent : inGameContent}
       </Stack>
     </Container>
   );

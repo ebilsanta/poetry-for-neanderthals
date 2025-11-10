@@ -11,7 +11,7 @@ type CreateRoomArgs = {
 };
 
 const DEFAULT_SETTINGS: GameSettings = {
-  turnSeconds: 90,
+  turnSeconds: 5,
   winningScore: 50,
   allowPass: false,
   teamNames: { A: "MAD", B: "GLAD" },

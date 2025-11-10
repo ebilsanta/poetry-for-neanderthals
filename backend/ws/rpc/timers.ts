@@ -12,6 +12,17 @@ function timerKey(roomCode: string) {
   return roomCode;
 }
 
+function emitTimerEvent(io: Server, event: string, payload: unknown) {
+  const emitter = (
+    io as unknown as {
+      serverSideEmit?: typeof io.serverSideEmit;
+    }
+  ).serverSideEmit;
+  if (typeof emitter === "function") {
+    emitter.call(io, event, payload);
+  }
+}
+
 export function clearTurnTimer(roomCode: string) {
   const key = timerKey(roomCode);
   const existing = turnTimers.get(key);
@@ -31,7 +42,7 @@ export function scheduleTurnTimer(
   clearTurnTimer(roomCode);
   const key = timerKey(roomCode);
 
-  io.of("/").serverSideEmit("timers:scheduled", {
+  emitTimerEvent(io, "timers:scheduled", {
     roomCode,
     turnId,
     endsAt,
@@ -48,7 +59,7 @@ export function scheduleTurnTimer(
     const result = forceEndTurn(room);
     if (!result) return;
 
-    io.of("/").serverSideEmit("timers:triggered", {
+    emitTimerEvent(io, "timers:triggered", {
       roomCode,
       turnId,
       reason: "ENDS_AT",
@@ -88,7 +99,7 @@ export function scheduleTurnTimer(
 
     broadcastRoundEnded(io, room);
 
-    io.of("/").serverSideEmit("timers:cleared", {
+    emitTimerEvent(io, "timers:cleared", {
       roomCode,
       turnId,
     });

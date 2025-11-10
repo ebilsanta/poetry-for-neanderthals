@@ -68,9 +68,12 @@ export function disconnectRoomSocket(socket: RoomSocket): void {
 export function updateRoomSocketAuth(
   socket: RoomSocket,
   roomCode: string,
-  token: string,
+  token?: string,
 ): void {
-  const auth = { code: roomCode, token };
+  const auth =
+    token !== undefined && token !== ""
+      ? { code: roomCode, token }
+      : { code: roomCode };
   (socket.io.opts as Record<string, unknown>).auth = auth;
 }
 
